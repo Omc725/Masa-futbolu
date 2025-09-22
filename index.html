@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Masa Futbolu</title>
+    
+    <!-- PWA için Manifest dosyasına bağlantı -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- PWA Meta Etiketleri -->
+    <meta name="theme-color" content="#2c3e50"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Masa Futbolu">
+    <meta name="description" content="Hızlı tempolu, eğlenceli bir masa futbolu oyunu.">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
+
+        :root {
+            --background-color: #2c3e50;
+            --primary-blue: #3498db;
+            --field-lines: #ffffff;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: #ffffff;
+            font-family: 'Nunito', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            text-align: center;
+        }
+        
+        html, body {
+            touch-action: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: absolute;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        #game-screen {
+            padding: 0;
+            max-width: none;
+            width: 100%;
+        }
+
+        .screen.active {
+            display: flex;
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .title {
+            font-size: 2.8em;
+            font-weight: 800;
+            margin-bottom: 40px;
+            color: #ecf0f1;
+        }
+        
+        .button {
+            background-color: transparent;
+            border: 2px solid var(--primary-blue);
+            color: var(--primary-blue);
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 80%;
+            margin-top: 15px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .button:hover { background-color: var(--primary-blue); color: white; }
+        .button:active { background-color: #2980b9; transform: translateY(2px); }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px 20px;
+            justify-items: center;
+            width: 100%;
+        }
+
+        .team-option {
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s;
+        }
+        .team-option:active { transform: scale(0.95); }
+        .team-option.disabled { opacity: 0.4; pointer-events: none; }
+
+        .team-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.8);
+        }
+        
+        .team-option span { font-size: 14px; font-weight: 700; }
+
+        #game-container {
+            position: relative;
+            width: 98%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        #game-canvas { width: 100%; cursor: none; }
+
+        .game-ui {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 8px 15px;
+            font-size: 20px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px; 
+            left: 10px; 
+            background-color: rgba(44, 62, 80, 0.8);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .team-info { display: flex; align-items: center; gap: 8px; }
+        .team-info .team-logo { width: 25px; height: 25px; }
+        .score-box { font-size: 22px; font-weight: 800; }
+        #timer { font-size: 20px; }
+
+        #info-overlay {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 100px;
+            font-weight: 800;
+            color: #fff;
+            background-color: rgba(0,0,0,0.6);
+            padding: 20px 40px;
+            border-radius: 15px;
+            display: none;
+            z-index: 20;
+            text-shadow: 0 0 10px black;
+        }
+    </style>
+</head>
+<body>
+    <div id="mode-selection-screen" class="screen active">
+        <h2 class="title">Oyun Modu</h2>
+        <button id="one-player-button" class="button">Tek Kişilik</button>
+        <button id="two-player-button" class="button">İki Kişilik</button>
+    </div>
+
+    <div id="difficulty-selection-screen" class="screen">
+        <h2 class="title">Zorluk Seç</h2>
+        <button data-difficulty="easy" class="button difficulty-button">Kolay</button>
+        <button data-difficulty="normal" class="button difficulty-button">Normal</button>
+        <button data-difficulty="hard" class="button difficulty-button">Zor</button>
+    </div>
+
+    <div id="team-selection-screen" class="screen">
+        <h2 id="selection-title" class="title"></h2>
+        <div id="team-grid" class="team-grid"></div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div id="game-container">
+             <div class="game-ui">
+                <div id="player2-ui" class="team-info"></div>
+                <span id="player2-score" class="score-box">0</span>
+                <span style="margin: 0 5px;" id="timer">0'</span>
+                <span id="player1-score" class="score-box">0</span>
+                <div id="player1-ui" class="team-info"></div>
+            </div>
+            <div id="info-overlay"></div>
+            <canvas id="game-canvas"></canvas>
+        </div>
+    </div>
+
+    <div id="results-screen" class="screen">
+        <h2 class="title">Maç Sonucu</h2>
+        <div style="display:flex; flex-direction:column; align-items:center; background:rgba(0,0,0,0.2); padding: 20px; border-radius: 8px;">
+             <div style="font-size:48px; font-weight:bold; margin-bottom: 20px;" id="result-score"></div>
+             <div style="display:flex; justify-content:space-around; align-items:center; width:100%;">
+                 <div class="team-result" id="result-player1"></div>
+                 <div class="team-result" id="result-player2"></div>
+             </div>
+        </div>
+        <button id="rematch-button" class="button">Tekrar Oyna</button>
+        <button id="new-game-button" class="button">Yeni Maç</button>
+    </div>
+
+    <script>
+        window.addEventListener('load', function() {
+            // Service Worker'ı kaydet
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered.'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            }
+
+            const teams = [{ name: 'Galatasaray', abbr: 'GS', color1: '#FDB913', color2: '#A30008' }, { name: 'Fenerbahçe', abbr: 'FB', color1: '#003366', color2: '#FFCC00' }, { name: 'Beşiktaş', abbr: 'BJK', color1: '#000000', color2: '#FFFFFF' }, { name: 'Trabzonspor', abbr: 'TS', color1: '#8B0000', color2: '#87CEEB' }, { name: 'Başakşehir', abbr: 'İBFK', color1: '#FF6600', color2: '#003366' }, { name: 'Adana Demirspor', abbr: 'ADS', color1: '#003366', color2: '#418FDE' }, { name: 'Alanyaspor', abbr: 'ALA', color1: '#FF6600', color2: '#008000' }, { name: 'Antalyaspor', abbr: 'ANT', color1: '#FF0000', color2: '#FFFFFF' }];
+            let player1Team, player2Team, gameMode, selectionState, difficulty;
+            let gameInterval, timerInterval;
+            let gameTime = 0, isSecondHalf = false, isGamePaused = false, player1Score = 0, player2Score = 0;
+            let confettiParticles = [], goalAnimation = null, ballTrail = [];
+
+            const screens = { mode: document.getElementById('mode-selection-screen'), difficulty: document.getElementById('difficulty-selection-screen'), selection: document.getElementById('team-selection-screen'), game: document.getElementById('game-screen'), results: document.getElementById('results-screen') };
+            const teamGrid = document.getElementById('team-grid');
+            const selectionTitle = document.getElementById('selection-title');
+            const infoOverlay = document.getElementById('info-overlay');
+            
+            function showScreen(screenName) { Object.values(screens).forEach(s => s.classList.remove('active')); screens[screenName].classList.add('active'); }
+
+            function startSelection(mode) {
+                gameMode = mode;
+                if (mode === '1p') { showScreen('difficulty'); } 
+                else { difficulty = 'normal'; selectionState = 'player1'; selectionTitle.textContent = '1. Oyuncu Seçimi'; populateTeamGrid(); showScreen('selection'); }
+            }
+            
+            function getSplitGradient(c1, c2) { return `linear-gradient(to right, ${c1} 50%, ${c2} 50%)`; }
+
+            function populateTeamGrid() {
+                teamGrid.innerHTML = '';
+                teams.forEach(team => {
+                    const teamEl = document.createElement('div');
+                    teamEl.className = 'team-option';
+                    teamEl.dataset.abbr = team.abbr;
+                    teamEl.innerHTML = `<div class="team-logo" style="background: ${getSplitGradient(team.color1, team.color2)};"></div><span>${team.abbr}</span>`;
+                    const handleInteraction = (e) => { e.preventDefault(); handleTeamClick(team); };
+                    teamEl.addEventListener('touchstart', handleInteraction);
+                    teamEl.addEventListener('click', handleInteraction);
+                    teamGrid.appendChild(teamEl);
+                });
+            }
+
+            function handleTeamClick(team) {
+                if(selectionState === 'player1') {
+                    player1Team = team;
+                    selectionState = 'player2';
+                    selectionTitle.textContent = '2. Oyuncu Seçimi';
+                    document.querySelector(`.team-option[data-abbr="${team.abbr}"]`).classList.add('disabled');
+                } else if(selectionState === 'player2') {
+                    player2Team = team;
+                    setupGameUI(); showScreen('game'); startGame();
+                }
+            }
+
+            function setupGameUI() {
+                document.getElementById('player1-ui').innerHTML = `<div class="team-logo" style="background: ${getSplitGradient(player1Team.color1, player1Team.color2)};"></div>`;
+                document.getElementById('player2-ui').innerHTML = `<div class="team-logo" style="background: ${getSplitGradient(player2Team.color1, player2Team.color2)};"></div>`;
+            }
+            
+            const canvas = document.getElementById('game-canvas'); const ctx = canvas.getContext('2d');
+            let scale, paddleWidth, paddleHeight, playerRadius, ballRadius, goalWidth, cornerBarrierSize;
+            let player1, player2, ball, keysPressed = {};
+            const INITIAL_BALL_SPEED = 7, MAX_BALL_SPEED = 15, SPEED_INCREMENT = 0.25;
+
+            function resizeCanvas() {
+                const container = document.getElementById('game-container');
+                const containerWidth = container.clientWidth;
+                canvas.width = containerWidth; canvas.height = containerWidth * 1.6;
+                scale = canvas.width / 400;
+                paddleWidth = 70 * scale; paddleHeight = 8 * scale; playerRadius = 18 * scale;
+                ballRadius = 10 * scale; goalWidth = 180 * scale;
+                cornerBarrierSize = 30 * scale;
+            }
+            
+            function resetPositions(isGoalForPlayer1, keepScores = false) {
+                if(!keepScores) { player1Score = 0; player2Score = 0; }
+                const aiSpeedMultipliers = { easy: 0.06, normal: 0.1, hard: 0.15 };
+                const aiSpeed = aiSpeedMultipliers[difficulty] || 0.1;
+                player1 = { x: canvas.width / 2, y: canvas.height - playerRadius * 3, radius: playerRadius, width: paddleWidth };
+                player2 = { x: canvas.width / 2, y: playerRadius * 3, radius: playerRadius, width: paddleWidth, speed: 6 * scale, aiReact: aiSpeed };
+                ball = { x: canvas.width / 2, y: canvas.height / 2, radius: ballRadius, speed: INITIAL_BALL_SPEED * scale, vx: 0, vy: 0 };
+                if (isGoalForPlayer1 !== undefined) {
+                    ball.vy = (isGoalForPlayer1 ? -INITIAL_BALL_SPEED : INITIAL_BALL_SPEED) * scale;
+                }
+            }
+
+            function startGame() {
+                resizeCanvas();
+                resetPositions();
+                gameTime = 0; isSecondHalf = false;
+                updateScores();
+                clearInterval(gameInterval); clearInterval(timerInterval);
+                startCountdown(() => {
+                    isGamePaused = false;
+                    gameInterval = setInterval(gameLoop, 1000 / 60);
+                    timerInterval = setInterval(updateTimer, 1000);
+                    ball.vy = INITIAL_BALL_SPEED * scale;
+                });
+            }
+            
+            function updateScores() { document.getElementById('player1-score').textContent = player1Score; document.getElementById('player2-score').textContent = player2Score; }
+            function showInfoMessage(text, duration) {
+                infoOverlay.style.fontSize = (text.length > 2) ? "50px" : "100px";
+                infoOverlay.textContent = text;
+                infoOverlay.style.display = 'block';
+                if (duration) setTimeout(() => { infoOverlay.style.display = 'none'; }, duration);
+            }
+            
+            function startCountdown(callback) {
+                isGamePaused = true;
+                draw();
+                let count = 3;
+                showInfoMessage(count, 950);
+                const countdownTimer = setInterval(() => {
+                    count--;
+                    if (count > 0) { showInfoMessage(count, 950); } 
+                    else {
+                        clearInterval(countdownTimer);
+                        showInfoMessage("BAŞLA!", 500);
+                        if(callback) callback();
+                    }
+                }, 1000);
+            }
+
+            function updateTimer() {
+                if (isGamePaused) return;
+                gameTime++;
+                document.getElementById('timer').textContent = `${gameTime}'`;
+                if (gameTime === 45 && !isSecondHalf) {
+                    isGamePaused = true;
+                    clearInterval(gameInterval);
+                    showInfoMessage("Devre Arası", 3000);
+                    setTimeout(() => {
+                        isSecondHalf = true; 
+                        resetPositions(false, true);
+                        startCountdown(() => {
+                            isGamePaused = false;
+                            gameInterval = setInterval(gameLoop, 1000 / 60);
+                            ball.vy = -INITIAL_BALL_SPEED * scale;
+                        });
+                    }, 3000);
+                }
+                if (gameTime >= 90) endGame();
+            }
+
+            function gameLoop() { update(); draw(); }
+            function update() {
+                if (isGamePaused) { updateGoalAnimation(); return; }
+                ballTrail.unshift({ x: ball.x, y: ball.y });
+                if (ballTrail.length > 15) ballTrail.pop();
+                ball.x += ball.vx; ball.y += ball.vy;
+                player1.x += (mouse.p1_x - player1.x) * 0.4;
+                if(player1.x - player1.width/2 < 0) player1.x = player1.width/2;
+                if(player1.x + player1.width/2 > canvas.width) player1.x = canvas.width - player1.width/2;
+                if(gameMode === '1p') { if (ball.vy < 0) player2.x += (ball.x - player2.x) * player2.aiReact; } 
+                else {
+                    player2.x += (mouse.p2_x - player2.x) * 0.4;
+                    if (keysPressed['a'] || keysPressed['A']) player2.x -= player2.speed;
+                    if (keysPressed['d'] || keysPressed['D']) player2.x += player2.speed;
+                }
+                if(player2.x - player2.width/2 < 0) player2.x = player2.width/2;
+                if(player2.x + player2.width/2 > canvas.width) player2.x = canvas.width - player2.width/2;
+                
+                const hitCorner = handleCornerCollisions();
+                if (!hitCorner) {
+                    if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) { ball.vx *= -1; increaseBallSpeed(); }
+                    handleGoalAndWallCollisions();
+                }
+
+                handlePaddleCollision(player1, false);
+                handlePaddleCollision(player2, true);
+            }
+
+            function handleGoalAndWallCollisions() {
+                const goalStartX = (canvas.width / 2) - (goalWidth / 2);
+                const goalEndX = (canvas.width / 2) + (goalWidth / 2);
+                if (ball.y - ball.radius < 0) {
+                    if (ball.x > goalStartX && ball.x < goalEndX) { player1Score++; triggerGoalCelebration(true); resetPositions(false, true); updateScores(); } 
+                    else { ball.y = ball.radius; ball.vy *= -1; }
+                }
+                if (ball.y + ball.radius > canvas.height) {
+                    if (ball.x > goalStartX && ball.x < goalEndX) { player2Score++; triggerGoalCelebration(false); resetPositions(true, true); updateScores(); }
+                    else { ball.y = canvas.height - ball.radius; ball.vy *= -1; }
+                }
+            }
+
+            function handleCornerCollisions() {
+                const w = canvas.width, h = canvas.height, r = ball.radius, b = cornerBarrierSize;
+                let collided = false;
+                if (ball.x < b && ball.y < b && (ball.x + ball.y < b + r)) { const tempVx = ball.vx; ball.vx = -ball.vy; ball.vy = -tempVx; collided = true; } 
+                else if (ball.x > w - b && ball.y < b && ((w - ball.x) + ball.y < b + r)) { const tempVx = ball.vx; ball.vx = ball.vy; ball.vy = tempVx; collided = true; } 
+                else if (ball.x < b && ball.y > h - b && (ball.x + (h - ball.y) < b + r)) { const tempVx = ball.vx; ball.vx = ball.vy; ball.vy = tempVx; collided = true; } 
+                else if (ball.x > w - b && ball.y > h - b && ((w - ball.x) + (h - ball.y) < b + r)) { const tempVx = ball.vx; ball.vx = -ball.vy; ball.vy = -tempVx; collided = true; }
+                if(collided) increaseBallSpeed();
+                return collided;
+            }
+
+            function increaseBallSpeed() { ball.speed = Math.min(MAX_BALL_SPEED * scale, ball.speed + SPEED_INCREMENT); }
+            
+            function handlePaddleCollision(player, isTopPlayer) {
+                const paddleY = isTopPlayer ? player.y + player.radius - paddleHeight/2 : player.y - player.radius + paddleHeight/2;
+                const paddleStartX = player.x - player.width/2;
+                const paddleEndX = player.x + player.width/2;
+                if((isTopPlayer ? (ball.y - ball.radius < paddleY && ball.y > player.y) : (ball.y + ball.radius > paddleY && ball.y < player.y)) && ball.x > paddleStartX && ball.x < paddleEndX) {
+                    let collidePoint = (ball.x - player.x) / (player.width / 2);
+                    let angleRad = collidePoint * (Math.PI / 3);
+                    let direction = isTopPlayer ? 1 : -1;
+                    increaseBallSpeed();
+                    ball.vx = ball.speed * Math.sin(angleRad);
+                    ball.vy = direction * ball.speed * Math.cos(angleRad);
+                    ballTrail = [];
+                }
+            }
+            
+            function draw() {
+                drawPitch(); drawFieldLines();
+                if (player1 && player2) {
+                    drawBallTrail();
+                    drawPlayer(player1, false, player1Team); 
+                    drawPlayer(player2, true, player2Team);
+                    drawSoccerBall(ball.x, ball.y, ball.radius);
+                }
+                drawConfetti();
+                drawGoalAnimation();
+            }
+            
+            function drawPitch() {
+                const stripeCount = 12; const stripeHeight = canvas.height / stripeCount;
+                for (let i = 0; i < stripeCount; i++) { ctx.fillStyle = (i % 2 === 0) ? '#4a8a53' : '#417d49'; ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight); }
+            }
+            function drawFieldLines() {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'; ctx.lineWidth = 3 * scale;
+                const w = canvas.width, h = canvas.height, midY = h / 2;
+                ctx.strokeRect(0, 0, w, h);
+                ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(w, midY); ctx.stroke();
+                ctx.beginPath(); ctx.arc(w / 2, midY, w * 0.15, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(w / 2, midY, 3 * scale, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+                ctx.strokeRect(w * 0.15, h - h * 0.25, w * 0.7, h * 0.25);
+                ctx.strokeRect(w * 0.3, h - h * 0.1, w * 0.4, h * 0.1);
+                ctx.beginPath(); ctx.arc(w / 2, h - h * 0.17, 4 * scale, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(w / 2, h - h * 0.17, w * 0.1, Math.PI * 1.25, Math.PI * 1.75); ctx.stroke();
+                ctx.strokeRect(w * 0.15, 0, w * 0.7, h * 0.25);
+                ctx.strokeRect(w * 0.3, 0, w * 0.4, h * 0.1);
+                ctx.beginPath(); ctx.arc(w / 2, h * 0.17, 4 * scale, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(w / 2, h * 0.17, w * 0.1, Math.PI * 0.25, Math.PI * 0.75); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, cornerBarrierSize); ctx.lineTo(cornerBarrierSize, 0); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(w, cornerBarrierSize); ctx.lineTo(w - cornerBarrierSize, 0); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, h - cornerBarrierSize); ctx.lineTo(cornerBarrierSize, h); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(w, h - cornerBarrierSize); ctx.lineTo(w - cornerBarrierSize, h); ctx.stroke();
+            }
+            function drawPlayer(p, isTop, team) {
+                ctx.beginPath(); ctx.arc(p.x, p.y + 4 * scale, p.radius, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fill();
+                ctx.save();
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.clip();
+                ctx.fillStyle = team.color1; ctx.fillRect(p.x - p.radius, p.y - p.radius, p.radius, p.radius * 2);
+                ctx.fillStyle = team.color2; ctx.fillRect(p.x, p.y - p.radius, p.radius, p.radius * 2);
+                ctx.restore();
+                const paddleY = isTop ? p.y + p.radius - paddleHeight*1.5 : p.y - p.radius + paddleHeight/2;
+                ctx.fillStyle = '#333333'; ctx.fillRect(p.x - p.width / 2, paddleY, p.width, paddleHeight);
+            }
+            
+            function drawBallTrail() {
+                for (let i = 0; i < ballTrail.length; i++) {
+                    const pos = ballTrail[i];
+                    ctx.save();
+                    ctx.globalAlpha = 1 - (i / ballTrail.length);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.beginPath(); ctx.arc(pos.x, pos.y, ball.radius * (1 - i / ballTrail.length), 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            function drawSoccerBall(x, y, r) {
+                ctx.beginPath(); ctx.arc(x, y + 4*scale, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
+                ctx.save();
+                ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.clip();
+                ctx.fillStyle = "white"; ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
+                ctx.fillStyle = "black";
+                const sides = 5, angle = 2 * Math.PI / sides;
+                for(let i = 0; i < sides; i++) {
+                    ctx.beginPath(); let curAngle = i * angle - Math.PI/2;
+                    ctx.moveTo(x + r * 0.6 * Math.cos(curAngle), y + r * 0.6 * Math.sin(curAngle));
+                    ctx.arc(x, y, r, curAngle - angle / 4, curAngle + angle / 4);
+                    ctx.closePath(); ctx.fill();
+                }
+                ctx.beginPath(); ctx.arc(x, y, r * 0.3, 0, 2 * Math.PI); ctx.fill();
+                ctx.restore();
+                ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.strokeStyle = "black"; ctx.lineWidth = 1; ctx.stroke();
+            }
+
+            function triggerGoalCelebration(isTopGoal) {
+                isGamePaused = true;
+                const goalY = isTopGoal ? 0 : canvas.height;
+                createConfetti(canvas.width/2, goalY);
+                goalAnimation = { y: -canvas.height * 0.4, size: canvas.height * 0.4, speed: 10 * scale, rotation: 0 };
+                setTimeout(() => { isGamePaused = false; ballTrail = []; }, 2000);
+            }
+            
+            function createConfetti(x,y) {
+                confettiParticles = [];
+                for(let i = 0; i < 100; i++) { confettiParticles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.7) * 20, radius: Math.random() * 5 + 2, color: `hsl(${Math.random() * 360}, 90%, 70%)`, lifespan: 100 }); }
+            }
+            function updateConfetti() {
+                confettiParticles.forEach((p, index) => {
+                    p.x += p.vx; p.y += p.vy;
+                    p.vy += 0.3; p.vx *= 0.98; p.lifespan--;
+                    if(p.lifespan <= 0) confettiParticles.splice(index, 1);
+                });
+            }
+            function drawConfetti() {
+                confettiParticles.forEach(p => {
+                    ctx.save();
+                    ctx.globalAlpha = p.lifespan / 100;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill();
+                    ctx.restore();
+                });
+            }
+            function updateGoalAnimation() {
+                if (goalAnimation) {
+                    goalAnimation.y += goalAnimation.speed;
+                    goalAnimation.rotation += 0.02;
+                    if (goalAnimation.y > canvas.height + goalAnimation.size) goalAnimation = null;
+                }
+                updateConfetti();
+            }
+            function drawGoalAnimation() {
+                if(goalAnimation) {
+                    ctx.save();
+                    ctx.translate(canvas.width / 2, goalAnimation.y);
+                    ctx.rotate(goalAnimation.rotation);
+                    drawSoccerBall(0, 0, goalAnimation.size);
+                    ctx.restore();
+                }
+            }
+            
+            function endGame() { clearInterval(gameInterval); clearInterval(timerInterval); setupResultsScreen(); showScreen('results'); }
+            function setupResultsScreen() {
+                 document.getElementById('result-player1').innerHTML = `<div class="team-logo" style="background: ${getSplitGradient(player1Team.color1, player1Team.color2)};"></div><span>${player1Team.abbr}</span>`;
+                 document.getElementById('result-player2').innerHTML = `<div class="team-logo" style="background: ${getSplitGradient(player2Team.color1, player2Team.color2)};"></div><span>${player2Team.abbr}</span>`;
+                 document.getElementById('result-score').textContent = `${player1Score} - ${player2Score}`;
+            }
+
+            let mouse = { p1_x: window.innerWidth / 2, p2_x: window.innerWidth / 2 };
+            function handleInput(e) {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const touches = e.touches ? Array.from(e.touches) : [e];
+                
+                touches.forEach(touch => {
+                    const clientX = touch.clientX;
+                    const clientY = touch.clientY;
+                    if (typeof clientX === 'number' && typeof clientY === 'number') {
+                        if (clientY > rect.top + rect.height / 2) {
+                            mouse.p1_x = clientX - rect.left;
+                        } 
+                        else if (gameMode === '2p') {
+                            mouse.p2_x = clientX - rect.left;
+                        }
+                    }
+                });
+            }
+            
+            const onePlayerBtn = document.getElementById('one-player-button');
+            const twoPlayerBtn = document.getElementById('two-player-button');
+            const rematchBtn = document.getElementById('rematch-button');
+            const newGameBtn = document.getElementById('new-game-button');
+            const difficultyButtons = document.querySelectorAll('.difficulty-button');
+
+            const handleOnePlayer = (e) => { e.preventDefault(); startSelection('1p'); };
+            onePlayerBtn.addEventListener('touchstart', handleOnePlayer, { passive: false });
+            onePlayerBtn.addEventListener('click', handleOnePlayer);
+            
+            const handleTwoPlayer = (e) => { e.preventDefault(); startSelection('2p'); };
+            twoPlayerBtn.addEventListener('touchstart', handleTwoPlayer, { passive: false });
+            twoPlayerBtn.addEventListener('click', handleTwoPlayer);
+
+            difficultyButtons.forEach(button => {
+                const handleDifficulty = (e) => {
+                    e.preventDefault();
+                    difficulty = button.dataset.difficulty;
+                    selectionState = 'player1';
+                    selectionTitle.textContent = '1. Oyuncu Seçimi';
+                    populateTeamGrid();
+                    showScreen('selection');
+                };
+                button.addEventListener('touchstart', handleDifficulty, { passive: false });
+                button.addEventListener('click', handleDifficulty);
+            });
+
+            const handleRematch = (e) => { e.preventDefault(); showScreen('game'); startGame(); };
+            rematchBtn.addEventListener('touchstart', handleRematch, { passive: false });
+            rematchBtn.addEventListener('click', handleRematch);
+            
+            const handleNewGame = (e) => { e.preventDefault(); showScreen('mode'); };
+            newGameBtn.addEventListener('touchstart', handleNewGame, { passive: false });
+            newGameBtn.addEventListener('click', handleNewGame);
+
+            window.addEventListener('mousemove', handleInput);
+            window.addEventListener('touchmove', handleInput, { passive: false });
+            window.addEventListener('touchstart', handleInput, { passive: false });
+            document.addEventListener('keydown', e => { keysPressed[e.key] = true; });
+            document.addEventListener('keyup', e => { keysPressed[e.key] = false; });
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+        });
+    </script>
+</body>
+</html>
