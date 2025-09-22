@@ -4,14 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Masa Futbolu</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2c3e50"/>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Masa Futbolu">
-    <meta name="description" content="Hızlı tempolu, eğlenceli bir masa futbolu oyunu.">
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
 
@@ -220,7 +212,7 @@
 
     <script>
         window.addEventListener('load', function() {
-            const teams = [{ name: 'Galatasaray', abbr: 'GS', color1: '#FDB913', color2: '#A30008' }, { name: 'Fenerbahçe', abbr: 'FB', color1: '#003366', color2: '#FFCC00' }, { name: 'Beşiktaş', abbr: 'BJK', color1: '#000000', color2: '#FFFFFF' }, { name: 'Trabzonspor', abbr: 'TS', color1: '#8B0000', color2: '#87CEEB' }, { name: 'Başakşehir', abbr: 'İBFK', color1: '#FF6600', color2: '#003366' }, { name: 'Adana Demirspor', abbr: 'ADS', color1: '#003366', color2: '#418FDE' }, { name: 'Alanyaspor', abbr: 'ALA', color1: '#FF6600', color2: '#008000' }, { name: 'Antalyaspor', abbr: 'ANT', color1: '#FF0000', color2: '#FFFFFF' }, { name: 'Bodrumspor', abbr: 'BOD', color1: '#006400', color2: '#FFFFFF' }, { name: 'Eyüpspor', abbr: 'EYP', color1: '#A020F0', color2: '#FFD700' }];
+            const teams = [{ name: 'Galatasaray', abbr: 'GS', color1: '#FDB913', color2: '#A30008' }, { name: 'Fenerbahçe', abbr: 'FB', color1: '#003366', color2: '#FFCC00' }, { name: 'Beşiktaş', abbr: 'BJK', color1: '#000000', color2: '#FFFFFF' }, { name: 'Trabzonspor', abbr: 'TS', color1: '#8B0000', color2: '#87CEEB' }, { name: 'Başakşehir', abbr: 'İBFK', color1: '#FF6600', color2: '#003366' }, { name: 'Adana Demirspor', abbr: 'ADS', color1: '#003366', color2: '#418FDE' }, { name: 'Alanyaspor', abbr: 'ALA', color1: '#FF6600', color2: '#008000' }, { name: 'Antalyaspor', abbr: 'ANT', color1: '#FF0000', color2: '#FFFFFF' }];
             let player1Team, player2Team, gameMode, selectionState, difficulty;
             let gameInterval, timerInterval;
             let gameTime = 0, isSecondHalf = false, isGamePaused = false, player1Score = 0, player2Score = 0;
@@ -364,11 +356,17 @@
                 ballTrail.unshift({ x: ball.x, y: ball.y });
                 if (ballTrail.length > 15) ballTrail.pop();
                 ball.x += ball.vx; ball.y += ball.vy;
-                player1.x += (mouse.x - player1.x) * 0.4;
+
+                // Player 1'in hareketi (mouse/touch)
+                player1.x += (mouse.p1_x - player1.x) * 0.4;
                 if(player1.x - player1.width/2 < 0) player1.x = player1.width/2;
                 if(player1.x + player1.width/2 > canvas.width) player1.x = canvas.width - player1.width/2;
-                if(gameMode === '1p') { if (ball.vy < 0) player2.x += (ball.x - player2.x) * player2.aiReact; } 
-                else {
+
+                // Player 2'nin hareketi (AI, Klavye veya Dokunmatik)
+                if(gameMode === '1p') { 
+                    if (ball.vy < 0) player2.x += (ball.x - player2.x) * player2.aiReact;
+                } else {
+                    player2.x += (mouse.p2_x - player2.x) * 0.4; // P2 için dokunmatik
                     if (keysPressed['a'] || keysPressed['A']) player2.x -= player2.speed;
                     if (keysPressed['d'] || keysPressed['D']) player2.x += player2.speed;
                 }
@@ -512,9 +510,7 @@
             
             function createConfetti(x,y) {
                 confettiParticles = [];
-                for(let i = 0; i < 100; i++) {
-                    confettiParticles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.7) * 20, radius: Math.random() * 5 + 2, color: `hsl(${Math.random() * 360}, 90%, 70%)`, lifespan: 100 });
-                }
+                for(let i = 0; i < 100; i++) { confettiParticles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.7) * 20, radius: Math.random() * 5 + 2, color: `hsl(${Math.random() * 360}, 90%, 70%)`, lifespan: 100 }); }
             }
             function updateConfetti() {
                 confettiParticles.forEach((p, index) => {
@@ -557,12 +553,26 @@
                  document.getElementById('result-score').textContent = `${player1Score} - ${player2Score}`;
             }
 
-            let mouse = { x: window.innerWidth / 2 };
+            let mouse = { p1_x: window.innerWidth / 2, p2_x: window.innerWidth / 2 };
             function handleInput(e) {
                 e.preventDefault();
                 const rect = canvas.getBoundingClientRect();
-                let clientX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX);
-                if (typeof clientX === 'number') mouse.x = clientX - rect.left;
+                const touches = e.touches ? Array.from(e.touches) : [e];
+                
+                touches.forEach(touch => {
+                    const clientX = touch.clientX;
+                    const clientY = touch.clientY;
+                    if (typeof clientX === 'number' && typeof clientY === 'number') {
+                        // Eğer dokunma ekranın alt yarısındaysa P1'i kontrol et
+                        if (clientY > rect.top + rect.height / 2) {
+                            mouse.p1_x = clientX - rect.left;
+                        } 
+                        // Eğer dokunma ekranın üst yarısındaysa ve 2 kişilik moddaysa P2'yi kontrol et
+                        else if (gameMode === '2p') {
+                            mouse.p2_x = clientX - rect.left;
+                        }
+                    }
+                });
             }
             
             const onePlayerBtn = document.getElementById('one-player-button');
