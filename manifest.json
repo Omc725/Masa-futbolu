@@ -1,0 +1,20 @@
+{
+  "name": "Masa Futbolu",
+  "short_name": "Masa Futbolu",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDE5MnYxOTJIMHoiLz48Y2lyY2xlIGN4PSI5NiIgY3k9Ijk2IiByPSI3NCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIHN0cm9rZS13aWR0aD0iMTIiLz48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIxMiIgZD0iTTM1LjQxIDEyMi4zM2wxMS4zMy0xOS42M0w1OC4wNyA4My4zbDIxLjMzIDEwLjY3TDEwMSAxMTVsMjEuMzMtMjEuMzRMMTM2IDUwLjY3bDE5LjYzIDExLjM0Ii8+PC9zdmc+",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDUxMmg1MTJIMHoiLz48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjE5Ny4zMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIHN0cm9rZS13aWR0aD0iMjQiLz48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyNCIgZD0iTTk0LjQyIDMyNi4yMWwzMC4yMi01Mi4zNEwxNTQuODYgMjIyLjFsNTYuODggMjguNDZMMjc1IDMwNi42N2w1Ni44OC01Ni45TDM2My4zMyAxMzUuMTJsNTIuMzUgMzAuMjMiLz48L3N2Zz4=",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#2c3e50",
+  "background_color": "#2c3e50"
+}
